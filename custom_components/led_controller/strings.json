@@ -13,8 +13,7 @@
         "description": "Choose the physical device this entry will control.",
         "data": {
           "device_id": "Device",
-          "friendly_name": "Friendly name",
-          "led_count": "LED count override"
+          "friendly_name": "Friendly name"
         }
       }
     },
@@ -31,8 +30,7 @@
       "init": {
         "title": "LED Controller options",
         "data": {
-          "friendly_name": "Friendly name",
-          "led_count": "LED count override"
+          "friendly_name": "Friendly name"
         }
       }
     }

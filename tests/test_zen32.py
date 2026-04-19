@@ -45,18 +45,18 @@ async def test_set_led_scene_button_issues_three_calls():
     assert calls[2][2]["value"] == 0  # bright
 
 
-async def test_set_led_relay_uses_band_head_params():
+async def test_set_led_relay_uses_correct_params():
     hass = _mock_hass()
     device = Zen32Device(device_id="dev-123")
 
     await device.set_led(hass, 5, parse_color("cyan"), 50)
 
     calls = [c.args for c in hass.services.async_call.await_args_list]
-    # Relay mode=1, color=6, brightness=11.
-    assert calls[0][2]["parameter"] == 1
-    assert calls[1][2]["parameter"] == 6
+    # Relay (led_idx=5): mode=6, color=11, brightness=16.
+    assert calls[0][2]["parameter"] == 6
+    assert calls[1][2]["parameter"] == 11
     assert calls[1][2]["value"] == ZEN32_COLOR_VALUES["cyan"]
-    assert calls[2][2]["parameter"] == 11
+    assert calls[2][2]["parameter"] == 16
     assert calls[2][2]["value"] == 1  # medium
 
 
@@ -68,7 +68,8 @@ async def test_clear_led_sets_mode_always_off():
 
     assert hass.services.async_call.await_count == 1
     call = hass.services.async_call.await_args_list[0]
-    assert call.args[2]["parameter"] == 4  # Button 3 mode
+    # Button 3 mode = param 4.
+    assert call.args[2]["parameter"] == 4
     assert call.args[2]["value"] == ZEN32_MODE_ALWAYS_OFF
 
 

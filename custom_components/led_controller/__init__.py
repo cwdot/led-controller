@@ -10,10 +10,8 @@ from .const import (
     CONF_DEVICE_ID,
     CONF_DEVICE_TYPE,
     CONF_FRIENDLY_NAME,
-    CONF_LED_COUNT,
     CONF_Z2M_BASE_TOPIC,
     CONF_Z2M_NAME,
-    DEVICE_TYPE_LED_COUNT,
     DEVICE_TYPE_VZM35,
     DOMAIN,
 )
@@ -28,14 +26,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = {**entry.data, **entry.options}
     device_type = data[CONF_DEVICE_TYPE]
     device_id = data[CONF_DEVICE_ID]
-    led_count = data.get(CONF_LED_COUNT, DEVICE_TYPE_LED_COUNT[device_type])
     friendly = data.get(CONF_FRIENDLY_NAME) or device_id
 
     extra_kwargs: dict = {}
     if device_type == DEVICE_TYPE_VZM35:
         extra_kwargs["z2m_name"] = data.get(CONF_Z2M_NAME)
         extra_kwargs["z2m_base_topic"] = data.get(CONF_Z2M_BASE_TOPIC)
-    device = build_device(device_type, device_id, led_count=led_count, **extra_kwargs)
+    device = build_device(device_type, device_id, **extra_kwargs)
     coordinator = LedControllerCoordinator(hass, entry, device, friendly)
     # First refresh is best-effort; Inovelli devices have no meaningful readback,
     # so we don't hard-fail if it can't produce data yet.

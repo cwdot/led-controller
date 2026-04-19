@@ -14,12 +14,10 @@ from .const import (
     CONF_DEVICE_ID,
     CONF_DEVICE_TYPE,
     CONF_FRIENDLY_NAME,
-    CONF_LED_COUNT,
     CONF_Z2M_BASE_TOPIC,
     CONF_Z2M_NAME,
     DEFAULT_Z2M_BASE_TOPIC,
     DEVICE_TYPE_INTEGRATION,
-    DEVICE_TYPE_LED_COUNT,
     DEVICE_TYPE_VZM35,
     DEVICE_TYPES,
     DOMAIN,
@@ -81,9 +79,6 @@ class LedControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_DEVICE_TYPE: self._device_type,
                     CONF_DEVICE_ID: device_id,
                     CONF_FRIENDLY_NAME: friendly,
-                    CONF_LED_COUNT: user_input.get(
-                        CONF_LED_COUNT, DEVICE_TYPE_LED_COUNT[self._device_type]
-                    ),
                 }
                 if is_vzm35:
                     data[CONF_Z2M_NAME] = user_input[CONF_Z2M_NAME]
@@ -98,10 +93,6 @@ class LedControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 selector.DeviceSelectorConfig(integration=expected_integration),
             ),
             vol.Optional(CONF_FRIENDLY_NAME): selector.TextSelector(),
-            vol.Required(
-                CONF_LED_COUNT,
-                default=DEVICE_TYPE_LED_COUNT[self._device_type],
-            ): vol.All(int, vol.Range(min=1, max=16)),
         }
         if is_vzm35:
             schema_dict[vol.Required(CONF_Z2M_NAME)] = selector.TextSelector()
@@ -133,13 +124,6 @@ class LedControllerOptionsFlow(OptionsFlow):
                 CONF_FRIENDLY_NAME,
                 default=data.get(CONF_FRIENDLY_NAME, ""),
             ): selector.TextSelector(),
-            vol.Required(
-                CONF_LED_COUNT,
-                default=data.get(
-                    CONF_LED_COUNT,
-                    DEVICE_TYPE_LED_COUNT[data[CONF_DEVICE_TYPE]],
-                ),
-            ): vol.All(int, vol.Range(min=1, max=16)),
         }
         if data[CONF_DEVICE_TYPE] == DEVICE_TYPE_VZM35:
             schema_dict[vol.Required(CONF_Z2M_NAME, default=data.get(CONF_Z2M_NAME, ""))] = (

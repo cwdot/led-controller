@@ -7,7 +7,6 @@ DOMAIN = "led_controller"
 CONF_DEVICE_TYPE = "device_type"
 CONF_DEVICE_ID = "device_id"
 CONF_FRIENDLY_NAME = "friendly_name"
-CONF_LED_COUNT = "led_count"
 CONF_Z2M_NAME = "z2m_name"
 CONF_Z2M_BASE_TOPIC = "z2m_base_topic"
 
@@ -39,33 +38,26 @@ DEVICE_TYPE_LED_COUNT = {
 # ---------------------------------------------------------------------------
 # ZEN32 — Zooz scene controller
 # ---------------------------------------------------------------------------
-# User-facing LED numbering:
-#   led_idx 1-4 = scene buttons (top of device, top-left → bottom-right)
+# User-facing LED numbering (matches palantir's scenecontroller.go):
+#   led_idx 1-4 = scene buttons 1-4 (physical buttons on top of the device)
 #   led_idx 5   = relay button (large button at bottom)
 #
-# Zooz's z-wave config parameters put the relay LED first in each band:
-#   mode:       param 1 (relay), params 2-5 (buttons 1-4)
-#   color:      param 6 (relay), params 7-10 (buttons 1-4)
-#   brightness: param 11 (relay), params 12-15 (buttons 1-4)
-
-
-def _zen32_band_offset(led_idx: int) -> int:
-    """Map led_idx (1-5 with 5=relay) to position within a Zooz param band (0=relay, 1-4=btns)."""
-    if led_idx == 5:
-        return 0
-    return led_idx
+# Z-wave config parameters map uniformly per led_idx:
+#   mode:       param = led_idx + 1   (params 2-6)
+#   color:      param = led_idx + 6   (params 7-11)
+#   brightness: param = led_idx + 11  (params 12-16)
 
 
 def zen32_mode_param(led_idx: int) -> int:
-    return _zen32_band_offset(led_idx) + 1
+    return led_idx + 1
 
 
 def zen32_color_param(led_idx: int) -> int:
-    return _zen32_band_offset(led_idx) + 6
+    return led_idx + 6
 
 
 def zen32_brightness_param(led_idx: int) -> int:
-    return _zen32_band_offset(led_idx) + 11
+    return led_idx + 11
 
 
 ZEN32_COLOR_VALUES: dict[str, int] = {

@@ -31,7 +31,8 @@ def test_inovelli_light_exposes_hs_color_mode():
     assert light.color_mode == ColorMode.HS
 
 
-def test_zen32_light_exposes_onoff_only():
+def test_zen32_light_also_exposes_hs():
+    # ZEN32 has a 7-color palette; we expose HS and snap internally so the picker is usable.
     device = Zen32Device(device_id="dev")
     coord = _fake_coordinator(device)
     entry = MagicMock()
@@ -39,4 +40,15 @@ def test_zen32_light_exposes_onoff_only():
 
     light = LedControllerLight(coord, entry, led_idx=1)
 
-    assert light.supported_color_modes == {ColorMode.ONOFF}
+    assert light.supported_color_modes == {ColorMode.HS}
+    assert light.color_mode == ColorMode.HS
+
+
+def test_zen32_relay_named_relay():
+    device = Zen32Device(device_id="dev")
+    coord = _fake_coordinator(device)
+    entry = MagicMock()
+    entry.entry_id = "e1"
+
+    assert LedControllerLight(coord, entry, led_idx=5).name == "Relay"
+    assert LedControllerLight(coord, entry, led_idx=1).name == "LED 1"

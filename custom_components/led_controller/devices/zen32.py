@@ -44,6 +44,11 @@ class Zen32Device(LedDevice):
         super().__init__(device_id)
         self.led_count = led_count or DEVICE_TYPE_LED_COUNT[DEVICE_TYPE_ZEN32]
 
+    def led_name(self, led_idx: int) -> str:
+        if led_idx == 5:
+            return "Relay"
+        return f"LED {led_idx}"
+
     async def set_led(
         self,
         hass: HomeAssistant,

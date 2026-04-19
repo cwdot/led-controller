@@ -39,6 +39,10 @@ class LedDevice(ABC):
         if not 1 <= led_idx <= self.led_count:
             raise ValueError(f"{self.model}: led_idx {led_idx} out of range 1..{self.led_count}")
 
+    def led_name(self, led_idx: int) -> str:
+        """Display name for LED entity — subclasses override for device-specific labels."""
+        return f"LED {led_idx}"
+
     @abstractmethod
     async def set_led(
         self,

@@ -46,23 +46,18 @@ class LedControllerLight(CoordinatorEntity[LedControllerCoordinator], LightEntit
         super().__init__(coordinator)
         self._led_idx = led_idx
         self._attr_unique_id = f"{entry.entry_id}_led_{led_idx}"
-        self._attr_name = f"LED {led_idx}"
+        self._attr_name = coordinator.device.led_name(led_idx)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=coordinator.friendly_name,
             manufacturer="LED Controller",
             model=coordinator.device.model,
         )
-        if coordinator.device.supports_hsv:
-            self._attr_supported_color_modes = {ColorMode.HS}
-            self._attr_color_mode = ColorMode.HS
-            # LightEntity with HS mode also needs brightness support to render the color picker.
-            self._attr_supported_features = 0
-        else:
-            # ZEN32 has a fixed 7-color palette; expose on/off here and surface color via
-            # the set_led service. Adding HS here would misrepresent capabilities.
-            self._attr_supported_color_modes = {ColorMode.ONOFF}
-            self._attr_color_mode = ColorMode.ONOFF
+        # Expose HS color mode for every device. Devices with a fixed palette (ZEN32) snap
+        # incoming HS requests to the nearest supported color — the picker is lossy but usable.
+        self._attr_supported_color_modes = {ColorMode.HS}
+        self._attr_color_mode = ColorMode.HS
+        self._attr_supported_features = 0
 
     @property
     def _state(self) -> LedState | None:

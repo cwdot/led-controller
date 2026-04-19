@@ -57,7 +57,6 @@ class LedControllerLight(CoordinatorEntity[LedControllerCoordinator], LightEntit
         # incoming HS requests to the nearest supported color — the picker is lossy but usable.
         self._attr_supported_color_modes = {ColorMode.HS}
         self._attr_color_mode = ColorMode.HS
-        self._attr_supported_features = 0
 
     @property
     def _state(self) -> LedState | None:

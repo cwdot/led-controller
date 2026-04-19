@@ -1,0 +1,82 @@
+set_led:
+  name: Set LED
+  description: Set one or more LEDs on a registered led_controller device.
+  target:
+    device:
+      integration: led_controller
+  fields:
+    led:
+      name: LED
+      description: LED index (1-based), list of indices, or 'all'.
+      required: true
+      example: 1
+      selector:
+        text:
+    color:
+      name: Color
+      description: Canonical color name, 'hsv:H,S,V', or '#RRGGBB'.
+      required: true
+      example: red
+      selector:
+        text:
+    brightness:
+      name: Brightness
+      description: 0-100 percent.
+      required: false
+      default: 100
+      example: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    mode:
+      name: Mode
+      description: ZEN32-specific behavior mode. Ignored on Inovelli.
+      required: false
+      selector:
+        select:
+          options:
+            - "on"
+            - "off"
+            - always_on
+            - always_off
+    transition:
+      name: Transition
+      description: Seconds for Inovelli fade. Ignored on ZEN32.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 255
+          step: 1
+
+clear_led:
+  name: Clear LED
+  description: Turn off one or more LEDs on a registered device.
+  target:
+    device:
+      integration: led_controller
+  fields:
+    led:
+      name: LED
+      description: LED index (1-based), list of indices, or 'all'.
+      required: true
+      example: 1
+      selector:
+        text:
+
+set_scene:
+  name: Set scene
+  description: Atomic multi-LED update on a registered device.
+  target:
+    device:
+      integration: led_controller
+  fields:
+    leds:
+      name: LEDs
+      description: List of {led, color, brightness, mode} entries.
+      required: true
+      selector:
+        object:

@@ -15,8 +15,12 @@ from .const import (
     CONF_DEVICE_TYPE,
     CONF_FRIENDLY_NAME,
     CONF_LED_COUNT,
+    CONF_Z2M_BASE_TOPIC,
+    CONF_Z2M_NAME,
+    DEFAULT_Z2M_BASE_TOPIC,
     DEVICE_TYPE_INTEGRATION,
     DEVICE_TYPE_LED_COUNT,
+    DEVICE_TYPE_VZM35,
     DEVICE_TYPES,
     DOMAIN,
 )
@@ -49,6 +53,7 @@ class LedControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_device(self, user_input: dict[str, Any] | None = None) -> Any:
         assert self._device_type is not None
         errors: dict[str, str] = {}
+        is_vzm35 = self._device_type == DEVICE_TYPE_VZM35
 
         if user_input is not None:
             device_id = user_input[CONF_DEVICE_ID]
@@ -64,37 +69,49 @@ class LedControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 ):
                     errors[CONF_DEVICE_ID] = "wrong_integration"
 
+            if is_vzm35 and not user_input.get(CONF_Z2M_NAME):
+                errors[CONF_Z2M_NAME] = "required"
+
             if not errors:
                 await self.async_set_unique_id(f"{self._device_type}:{device_id}")
                 self._abort_if_unique_id_configured()
                 default_name = (entry.name_by_user or entry.name) if entry else device_id
                 friendly = user_input.get(CONF_FRIENDLY_NAME) or default_name
-                return self.async_create_entry(
-                    title=friendly,
-                    data={
-                        CONF_DEVICE_TYPE: self._device_type,
-                        CONF_DEVICE_ID: device_id,
-                        CONF_FRIENDLY_NAME: friendly,
-                        CONF_LED_COUNT: user_input.get(
-                            CONF_LED_COUNT, DEVICE_TYPE_LED_COUNT[self._device_type]
-                        ),
-                    },
-                )
+                data: dict[str, Any] = {
+                    CONF_DEVICE_TYPE: self._device_type,
+                    CONF_DEVICE_ID: device_id,
+                    CONF_FRIENDLY_NAME: friendly,
+                    CONF_LED_COUNT: user_input.get(
+                        CONF_LED_COUNT, DEVICE_TYPE_LED_COUNT[self._device_type]
+                    ),
+                }
+                if is_vzm35:
+                    data[CONF_Z2M_NAME] = user_input[CONF_Z2M_NAME]
+                    data[CONF_Z2M_BASE_TOPIC] = (
+                        user_input.get(CONF_Z2M_BASE_TOPIC) or DEFAULT_Z2M_BASE_TOPIC
+                    )
+                return self.async_create_entry(title=friendly, data=data)
 
         expected_integration = DEVICE_TYPE_INTEGRATION[self._device_type]
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_DEVICE_ID): selector.DeviceSelector(
-                    selector.DeviceSelectorConfig(integration=expected_integration),
-                ),
-                vol.Optional(CONF_FRIENDLY_NAME): selector.TextSelector(),
-                vol.Required(
-                    CONF_LED_COUNT,
-                    default=DEVICE_TYPE_LED_COUNT[self._device_type],
-                ): vol.All(int, vol.Range(min=1, max=16)),
-            }
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_DEVICE_ID): selector.DeviceSelector(
+                selector.DeviceSelectorConfig(integration=expected_integration),
+            ),
+            vol.Optional(CONF_FRIENDLY_NAME): selector.TextSelector(),
+            vol.Required(
+                CONF_LED_COUNT,
+                default=DEVICE_TYPE_LED_COUNT[self._device_type],
+            ): vol.All(int, vol.Range(min=1, max=16)),
+        }
+        if is_vzm35:
+            schema_dict[vol.Required(CONF_Z2M_NAME)] = selector.TextSelector()
+            schema_dict[vol.Optional(CONF_Z2M_BASE_TOPIC, default=DEFAULT_Z2M_BASE_TOPIC)] = (
+                selector.TextSelector()
+            )
+
+        return self.async_show_form(
+            step_id="device", data_schema=vol.Schema(schema_dict), errors=errors
         )
-        return self.async_show_form(step_id="device", data_schema=schema, errors=errors)
 
     @staticmethod
     @callback
@@ -111,22 +128,30 @@ class LedControllerOptionsFlow(OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         data = {**self._entry.data, **self._entry.options}
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_FRIENDLY_NAME,
-                    default=data.get(CONF_FRIENDLY_NAME, ""),
-                ): selector.TextSelector(),
-                vol.Required(
+        schema_dict: dict[Any, Any] = {
+            vol.Optional(
+                CONF_FRIENDLY_NAME,
+                default=data.get(CONF_FRIENDLY_NAME, ""),
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_LED_COUNT,
+                default=data.get(
                     CONF_LED_COUNT,
-                    default=data.get(
-                        CONF_LED_COUNT,
-                        DEVICE_TYPE_LED_COUNT[data[CONF_DEVICE_TYPE]],
-                    ),
-                ): vol.All(int, vol.Range(min=1, max=16)),
-            }
-        )
-        return self.async_show_form(step_id="init", data_schema=schema)
+                    DEVICE_TYPE_LED_COUNT[data[CONF_DEVICE_TYPE]],
+                ),
+            ): vol.All(int, vol.Range(min=1, max=16)),
+        }
+        if data[CONF_DEVICE_TYPE] == DEVICE_TYPE_VZM35:
+            schema_dict[vol.Required(CONF_Z2M_NAME, default=data.get(CONF_Z2M_NAME, ""))] = (
+                selector.TextSelector()
+            )
+            schema_dict[
+                vol.Optional(
+                    CONF_Z2M_BASE_TOPIC,
+                    default=data.get(CONF_Z2M_BASE_TOPIC, DEFAULT_Z2M_BASE_TOPIC),
+                )
+            ] = selector.TextSelector()
+        return self.async_show_form(step_id="init", data_schema=vol.Schema(schema_dict))
 
 
 def _integration_entry_ids(hass, integration: str) -> set[str]:

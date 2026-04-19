@@ -56,7 +56,11 @@ class LedControllerLight(CoordinatorEntity[LedControllerCoordinator], LightEntit
         if coordinator.device.supports_hsv:
             self._attr_supported_color_modes = {ColorMode.HS}
             self._attr_color_mode = ColorMode.HS
+            # LightEntity with HS mode also needs brightness support to render the color picker.
+            self._attr_supported_features = 0
         else:
+            # ZEN32 has a fixed 7-color palette; expose on/off here and surface color via
+            # the set_led service. Adding HS here would misrepresent capabilities.
             self._attr_supported_color_modes = {ColorMode.ONOFF}
             self._attr_color_mode = ColorMode.ONOFF
 
@@ -76,7 +80,8 @@ class LedControllerLight(CoordinatorEntity[LedControllerCoordinator], LightEntit
     def brightness(self) -> int | None:
         state = self._state
         if not state or state.brightness_pct is None:
-            return None
+            # Default to full when unknown so HA renders the brightness slider + color picker.
+            return 255 if (state and state.on) else 0
         return int(round(state.brightness_pct * 255 / 100))
 
     @property

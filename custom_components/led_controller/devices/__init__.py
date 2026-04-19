@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from ..const import DEVICE_TYPE_VZM35, DEVICE_TYPE_VZW32, DEVICE_TYPE_ZEN32
 from .base import LedDevice, LedState
 from .vzm35 import Vzm35Device
@@ -15,9 +17,14 @@ DEVICE_CLASSES: dict[str, type[LedDevice]] = {
 }
 
 
-def build_device(device_type: str, device_id: str, led_count: int | None = None) -> LedDevice:
+def build_device(
+    device_type: str,
+    device_id: str,
+    led_count: int | None = None,
+    **kwargs: Any,
+) -> LedDevice:
     cls = DEVICE_CLASSES[device_type]
-    return cls(device_id, led_count=led_count)
+    return cls(device_id, led_count=led_count, **kwargs)
 
 
 __all__ = [

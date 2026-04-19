@@ -38,7 +38,7 @@ class Vzw32Device(LedDevice):
     )
     supports_hsv = True
 
-    def __init__(self, device_id: str, led_count: int | None = None) -> None:
+    def __init__(self, device_id: str, led_count: int | None = None, **_extra: object) -> None:
         super().__init__(device_id)
         self.led_count = led_count or DEVICE_TYPE_LED_COUNT[DEVICE_TYPE_VZW32]
         # Readback from notification params isn't reliable on Inovelli; cache last writes.

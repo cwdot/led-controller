@@ -1,1 +1,101 @@
-{}
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "LED Controller",
+        "description": "Pick the device type to register.",
+        "data": {
+          "device_type": "Device type"
+        }
+      },
+      "device": {
+        "title": "Select device",
+        "description": "Choose the physical device this entry will control. For VZM35-SN (Zigbee2MQTT) also provide the Z2M friendly name.",
+        "data": {
+          "device_id": "Device",
+          "friendly_name": "Friendly name",
+          "led_count": "LED count override",
+          "z2m_name": "Zigbee2MQTT friendly name",
+          "z2m_base_topic": "Zigbee2MQTT base topic"
+        }
+      }
+    },
+    "error": {
+      "device_not_found": "Selected device is not available.",
+      "wrong_integration": "Selected device is not owned by the expected integration for this type."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "LED Controller options",
+        "data": {
+          "friendly_name": "Friendly name",
+          "led_count": "LED count override",
+          "z2m_name": "Zigbee2MQTT friendly name",
+          "z2m_base_topic": "Zigbee2MQTT base topic"
+        }
+      }
+    }
+  },
+  "selector": {
+    "device_type": {
+      "options": {
+        "zen32": "Zooz ZEN32 scene controller",
+        "vzw32": "Inovelli VZW32-SN dimmer (z-wave)",
+        "vzm35": "Inovelli VZM35-SN fan switch (zigbee)"
+      }
+    }
+  },
+  "services": {
+    "set_led": {
+      "name": "Set LED",
+      "description": "Set one or more LEDs on a registered device.",
+      "fields": {
+        "led": {
+          "name": "LED",
+          "description": "LED index (1-based), list of indices, or 'all'."
+        },
+        "color": {
+          "name": "Color",
+          "description": "Canonical name (red, green, blue, ...), 'hsv:H,S,V', or '#RRGGBB'."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "0-100 percent."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "ZEN32-specific behavior mode. Ignored on Inovelli."
+        },
+        "transition": {
+          "name": "Transition",
+          "description": "Seconds for Inovelli fade. Ignored on ZEN32."
+        }
+      }
+    },
+    "clear_led": {
+      "name": "Clear LED",
+      "description": "Turn off one or more LEDs on a registered device.",
+      "fields": {
+        "led": {
+          "name": "LED",
+          "description": "LED index (1-based), list of indices, or 'all'."
+        }
+      }
+    },
+    "set_scene": {
+      "name": "Set scene",
+      "description": "Atomic multi-LED update on a registered device.",
+      "fields": {
+        "leds": {
+          "name": "LEDs",
+          "description": "List of {led, color, brightness, mode} entries."
+        }
+      }
+    }
+  }
+}

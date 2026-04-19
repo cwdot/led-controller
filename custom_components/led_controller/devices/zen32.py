@@ -40,7 +40,7 @@ class Zen32Device(LedDevice):
     supported_palette = frozenset(ZEN32_COLOR_VALUES.keys())
     supports_hsv = False
 
-    def __init__(self, device_id: str, led_count: int | None = None) -> None:
+    def __init__(self, device_id: str, led_count: int | None = None, **_extra: object) -> None:
         super().__init__(device_id)
         self.led_count = led_count or DEVICE_TYPE_LED_COUNT[DEVICE_TYPE_ZEN32]
 

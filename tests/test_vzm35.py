@@ -1,16 +1,14 @@
-"""Tests for Vzm35Device: verifies zha.issue_zigbee_cluster_command shape."""
+"""Tests for Vzm35Device: verifies mqtt.publish payload shape for Zigbee2MQTT."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import json
+from unittest.mock import AsyncMock
 
 import pytest
 
 from custom_components.led_controller.color import parse_color
 from custom_components.led_controller.const import (
-    VZM35_CLUSTER_ID,
-    VZM35_CMD_INDIVIDUAL_LED_EFFECT,
-    VZM35_CMD_LED_EFFECT,
     VZM35_DURATION_INDEFINITE,
     VZM35_EFFECT_OFF,
     VZM35_EFFECT_SOLID,
@@ -30,56 +28,60 @@ def _mock_hass() -> object:
     return _Hass()
 
 
-def _registry_entry_with_ieee(ieee: str):
-    entry = MagicMock()
-    entry.identifiers = {("zha", ieee)}
-    entry.connections = set()
-    return entry
+def test_requires_z2m_name():
+    with pytest.raises(ValueError):
+        Vzm35Device(device_id="dev-zig")
 
 
-@pytest.fixture
-def patched_registry():
-    entry = _registry_entry_with_ieee("00:11:22:33:44:55:66:77")
-    with patch(
-        "custom_components.led_controller.devices.vzm35.async_get_device_registry"
-    ) as mocked:
-        mocked.return_value.async_get.return_value = entry
-        yield mocked
-
-
-async def test_set_led_issues_individual_command(patched_registry):
+async def test_set_led_publishes_individual_effect():
     hass = _mock_hass()
-    device = Vzm35Device(device_id="dev-zig")
+    device = Vzm35Device(device_id="dev-zig", z2m_name="bedroom_fan")
 
     await device.set_led(hass, 3, parse_color("green"), 75)
 
     call = hass.services.async_call.await_args_list[0]
-    assert call.args[1] == "issue_zigbee_cluster_command"
-    payload = call.args[2]
-    assert payload["cluster_id"] == VZM35_CLUSTER_ID
-    assert payload["command"] == VZM35_CMD_INDIVIDUAL_LED_EFFECT
-    assert payload["params"]["led_number"] == 3
-    assert payload["params"]["led_effect"] == VZM35_EFFECT_SOLID
-    assert payload["params"]["led_level"] == 75
-    assert payload["params"]["led_duration"] == VZM35_DURATION_INDEFINITE
+    assert call.args[0] == "mqtt"
+    assert call.args[1] == "publish"
+    assert call.args[2]["topic"] == "zigbee2mqtt/bedroom_fan/set"
+    payload = json.loads(call.args[2]["payload"])
+    assert "individual_led_effect" in payload
+    inner = payload["individual_led_effect"]
+    assert inner["led"] == 3
+    assert inner["effect"] == VZM35_EFFECT_SOLID
+    assert inner["level"] == 75
+    assert inner["duration"] == VZM35_DURATION_INDEFINITE
 
 
-async def test_clear_led_uses_effect_off(patched_registry):
+async def test_clear_led_sends_off_effect():
     hass = _mock_hass()
-    device = Vzm35Device(device_id="dev-zig")
+    device = Vzm35Device(device_id="dev-zig", z2m_name="bedroom_fan")
 
     await device.clear_led(hass, 2)
 
-    call = hass.services.async_call.await_args_list[0]
-    assert call.args[2]["params"]["led_effect"] == VZM35_EFFECT_OFF
+    payload = json.loads(hass.services.async_call.await_args_list[0].args[2]["payload"])
+    assert payload["individual_led_effect"]["effect"] == VZM35_EFFECT_OFF
 
 
-async def test_set_all_uses_broadcast_command(patched_registry):
+async def test_set_all_publishes_led_effect():
     hass = _mock_hass()
-    device = Vzm35Device(device_id="dev-zig")
+    device = Vzm35Device(device_id="dev-zig", z2m_name="bedroom_fan")
 
     await device.set_all(hass, parse_color("magenta"), 60)
 
+    payload = json.loads(hass.services.async_call.await_args_list[0].args[2]["payload"])
+    assert "led_effect" in payload
+    assert payload["led_effect"]["level"] == 60
+
+
+async def test_custom_base_topic():
+    hass = _mock_hass()
+    device = Vzm35Device(
+        device_id="dev-zig",
+        z2m_name="bedroom_fan",
+        z2m_base_topic="custom/z2m",
+    )
+
+    await device.set_led(hass, 1, parse_color("red"), 100)
+
     call = hass.services.async_call.await_args_list[0]
-    assert call.args[2]["command"] == VZM35_CMD_LED_EFFECT
-    assert call.args[2]["params"]["led_level"] == 60
+    assert call.args[2]["topic"] == "custom/z2m/bedroom_fan/set"

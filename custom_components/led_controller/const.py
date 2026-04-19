@@ -8,6 +8,10 @@ CONF_DEVICE_TYPE = "device_type"
 CONF_DEVICE_ID = "device_id"
 CONF_FRIENDLY_NAME = "friendly_name"
 CONF_LED_COUNT = "led_count"
+CONF_Z2M_NAME = "z2m_name"
+CONF_Z2M_BASE_TOPIC = "z2m_base_topic"
+
+DEFAULT_Z2M_BASE_TOPIC = "zigbee2mqtt"
 
 DEVICE_TYPE_ZEN32 = "zen32"
 DEVICE_TYPE_VZW32 = "vzw32"
@@ -18,10 +22,12 @@ DEVICE_TYPES = (DEVICE_TYPE_ZEN32, DEVICE_TYPE_VZW32, DEVICE_TYPE_VZM35)
 ZWAVE_INTEGRATION = "zwave_js"
 ZHA_INTEGRATION = "zha"
 
+MQTT_INTEGRATION = "mqtt"
+
 DEVICE_TYPE_INTEGRATION = {
     DEVICE_TYPE_ZEN32: ZWAVE_INTEGRATION,
     DEVICE_TYPE_VZW32: ZWAVE_INTEGRATION,
-    DEVICE_TYPE_VZM35: ZHA_INTEGRATION,
+    DEVICE_TYPE_VZM35: MQTT_INTEGRATION,
 }
 
 DEVICE_TYPE_LED_COUNT = {
@@ -106,22 +112,17 @@ VZW32_EFFECT_SOLID = 1
 VZW32_DURATION_INDEFINITE = 255
 
 # ---------------------------------------------------------------------------
-# VZM35-SN — Inovelli Blue fan switch (zigbee, cluster 0xFC31)
+# VZM35-SN — Inovelli Blue fan switch (zigbee via Zigbee2MQTT)
 #
-# Source: zigpy/zha-device-handlers zhaquirks/inovelli/__init__.py
-# Command 0x01 led_effect(effect, color, level, duration) — all LEDs
-# Command 0x03 individual_led_effect(led, effect, color, level, duration)
-# Attributes 0x005F led_color_when_on (uint8), 0x0061 led_intensity_when_on (uint8).
+# Source: https://www.zigbee2mqtt.io/devices/VZM35-SN.html
+# Commands go through mqtt.publish to `<base_topic>/<friendly_name>/set` with JSON.
+#   {"individual_led_effect": {"led": 1..7, "effect": "solid"|"off"|..,
+#                              "color": 0..255, "level": 0..100, "duration": 1..255}}
+#   {"led_effect":            {"effect": ..., "color": ..., "level": ..., "duration": ...}}
+# "solid" with duration=255 holds the color indefinitely.
 # ---------------------------------------------------------------------------
-VZM35_CLUSTER_ID = 0xFC31  # 64561
-VZM35_ENDPOINT_ID = 1
-VZM35_CMD_LED_EFFECT = 0x01
-VZM35_CMD_INDIVIDUAL_LED_EFFECT = 0x03
-VZM35_ATTR_LED_COLOR_WHEN_ON = 0x005F
-VZM35_ATTR_LED_INTENSITY_WHEN_ON = 0x0061
-
-VZM35_EFFECT_OFF = 0
-VZM35_EFFECT_SOLID = 1
+VZM35_EFFECT_OFF = "off"
+VZM35_EFFECT_SOLID = "solid"
 VZM35_DURATION_INDEFINITE = 255
 
 # ---------------------------------------------------------------------------

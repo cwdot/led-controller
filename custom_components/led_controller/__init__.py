@@ -34,15 +34,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         extra_kwargs["z2m_base_topic"] = data.get(CONF_Z2M_BASE_TOPIC)
     device = build_device(device_type, device_id, **extra_kwargs)
     coordinator = LedControllerCoordinator(hass, entry, device, friendly)
-    # First refresh is best-effort; Inovelli devices have no meaningful readback,
-    # so we don't hard-fail if it can't produce data yet.
-    await coordinator.async_refresh()
 
+    # Store coordinator and create entities BEFORE attempting any readback.
+    # ZEN32 read_all issues 15 sequential zwave_js.get_config_parameter calls which can be
+    # slow or fail on cold start; a blocking first refresh here would prevent entities
+    # from ever being registered (surfaces as "0 controls" on the device page).
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
-
     async_register_services(hass)
+
+    # Kick off initial refresh in the background so entities hydrate once z-wave responds.
+    entry.async_create_background_task(hass, coordinator.async_refresh(), f"{DOMAIN}_first_refresh")
     return True
 
 

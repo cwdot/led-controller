@@ -10,6 +10,7 @@ from .const import (
     CONF_DEVICE_ID,
     CONF_DEVICE_TYPE,
     CONF_FRIENDLY_NAME,
+    CONF_RESET_CONFIG,
     CONF_Z2M_BASE_TOPIC,
     CONF_Z2M_NAME,
     DEVICE_TYPE_VZM35,
@@ -33,7 +34,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         extra_kwargs["z2m_name"] = data.get(CONF_Z2M_NAME)
         extra_kwargs["z2m_base_topic"] = data.get(CONF_Z2M_BASE_TOPIC)
     device = build_device(device_type, device_id, **extra_kwargs)
-    coordinator = LedControllerCoordinator(hass, entry, device, friendly)
+    reset_config = data.get(CONF_RESET_CONFIG) or []
+    coordinator = LedControllerCoordinator(hass, entry, device, friendly, reset_config)
 
     # Store coordinator and create entities BEFORE attempting any readback.
     # ZEN32 read_all issues 15 sequential zwave_js.get_config_parameter calls which can be

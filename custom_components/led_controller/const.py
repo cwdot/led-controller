@@ -9,6 +9,9 @@ CONF_DEVICE_ID = "device_id"
 CONF_FRIENDLY_NAME = "friendly_name"
 CONF_Z2M_NAME = "z2m_name"
 CONF_Z2M_BASE_TOPIC = "z2m_base_topic"
+# Per-device "reset" preset: a list of {led, color, brightness, mode} entries applied by
+# the led_controller.reset service. LEDs not listed are cleared.
+CONF_RESET_CONFIG = "reset_config"
 
 DEFAULT_Z2M_BASE_TOPIC = "zigbee2mqtt"
 

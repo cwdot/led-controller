@@ -25,6 +25,22 @@ _LOGGER = logging.getLogger(__name__)
 SERVICE_SET_LED = "set_led"
 SERVICE_CLEAR_LED = "clear_led"
 SERVICE_SET_SCENE = "set_scene"
+SERVICE_RESET = "reset"
+
+_MODES = {"on", "off", "always_on", "always_off"}
+
+# One LED's desired state — shared by set_scene's `leds` and the per-device reset preset.
+_LED_CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required("led"): vol.All(int, vol.Range(min=1)),
+        vol.Required("color"): cv.string,
+        vol.Optional("brightness", default=100): vol.All(int, vol.Range(min=0, max=100)),
+        vol.Optional("mode"): vol.In(_MODES),
+    }
+)
+
+# Validates a stored reset preset (list of LED configs); imported by the options flow.
+RESET_CONFIG_SCHEMA = vol.Schema([_LED_CONFIG_SCHEMA])
 
 
 def _led_selector(value: Any) -> list[int] | str:
@@ -52,7 +68,7 @@ SET_LED_SCHEMA = vol.Schema(
         vol.Required("led"): _led_selector,
         vol.Required("color"): cv.string,
         vol.Optional("brightness", default=100): vol.All(int, vol.Range(min=0, max=100)),
-        vol.Optional("mode"): vol.In({"on", "off", "always_on", "always_off"}),
+        vol.Optional("mode"): vol.In(_MODES),
         vol.Optional("transition"): vol.All(int, vol.Range(min=0, max=255)),
     },
 )
@@ -71,18 +87,15 @@ SET_SCENE_SCHEMA = vol.Schema(
         vol.Optional("device_id"): vol.Any(cv.string, [cv.string]),
         vol.Optional("area_id"): vol.Any(cv.string, [cv.string]),
         vol.Optional("entity_id"): vol.Any(cv.string, [cv.string]),
-        vol.Required("leds"): [
-            vol.Schema(
-                {
-                    vol.Required("led"): vol.All(int, vol.Range(min=1)),
-                    vol.Required("color"): cv.string,
-                    vol.Optional("brightness", default=100): vol.All(
-                        int, vol.Range(min=0, max=100)
-                    ),
-                    vol.Optional("mode"): vol.In({"on", "off", "always_on", "always_off"}),
-                }
-            )
-        ],
+        vol.Required("leds"): [_LED_CONFIG_SCHEMA],
+    },
+)
+
+RESET_SCHEMA = vol.Schema(
+    {
+        vol.Optional("device_id"): vol.Any(cv.string, [cv.string]),
+        vol.Optional("area_id"): vol.Any(cv.string, [cv.string]),
+        vol.Optional("entity_id"): vol.Any(cv.string, [cv.string]),
     },
 )
 
@@ -156,23 +169,58 @@ def async_register_services(hass: HomeAssistant) -> None:
                     LedState(on=True, color=color_for_device, brightness_pct=brightness, mode=mode),
                 )
 
+    async def _reset(call: ServiceCall) -> None:
+        # No target resets every configured controller; each applies its own preset.
+        coordinators = _resolve_coordinators(hass, call, default_all=True)
+        for coord in coordinators:
+            await _apply_reset(hass, coord)
+
     hass.services.async_register(DOMAIN, SERVICE_SET_LED, _set_led, schema=SET_LED_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_CLEAR_LED, _clear_led, schema=CLEAR_LED_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_SET_SCENE, _set_scene, schema=SET_SCENE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_RESET, _reset, schema=RESET_SCHEMA)
 
 
 def async_unregister_services(hass: HomeAssistant) -> None:
     """Called by __init__ only when the last config entry unloads."""
-    for svc in (SERVICE_SET_LED, SERVICE_CLEAR_LED, SERVICE_SET_SCENE):
+    for svc in (SERVICE_SET_LED, SERVICE_CLEAR_LED, SERVICE_SET_SCENE, SERVICE_RESET):
         if hass.services.has_service(DOMAIN, svc):
             hass.services.async_remove(DOMAIN, svc)
 
 
-def _resolve_coordinators(hass: HomeAssistant, call: ServiceCall) -> list[LedControllerCoordinator]:
-    """Find coordinators targeted by the service call's device_id / area / entity."""
+async def _apply_reset(hass: HomeAssistant, coord: LedControllerCoordinator) -> None:
+    """Restore a device to its saved preset: listed LEDs get their color, the rest clear."""
+    configured = {entry["led"]: entry for entry in coord.reset_config}
+    for led_idx in range(1, coord.device.led_count + 1):
+        entry = configured.get(led_idx)
+        if entry is None:
+            await coord.device.clear_led(hass, led_idx)
+            coord.record_write(led_idx, LedState(on=False))
+            continue
+        color_for_device = _adapt_color(parse_color(entry["color"]), coord.device)
+        brightness = entry.get("brightness", 100)
+        mode = entry.get("mode")
+        await coord.device.set_led(hass, led_idx, color_for_device, brightness, mode=mode)
+        coord.record_write(
+            led_idx,
+            LedState(on=True, color=color_for_device, brightness_pct=brightness, mode=mode),
+        )
+
+
+def _resolve_coordinators(
+    hass: HomeAssistant, call: ServiceCall, *, default_all: bool = False
+) -> list[LedControllerCoordinator]:
+    """Find coordinators targeted by the service call's device_id / area / entity.
+
+    With ``default_all=True`` an untargeted call resolves to every configured controller.
+    """
     store: dict[str, LedControllerCoordinator] = hass.data.get(DOMAIN, {})
     requested = _expand_target_device_ids(hass, call)
     if not requested:
+        if default_all:
+            if not store:
+                raise vol.Invalid("no led_controller devices configured")
+            return list(store.values())
         raise vol.Invalid("device_id, area_id, or entity_id is required")
     matched = [coord for coord in store.values() if coord.entry.data.get("device_id") in requested]
     if not matched:

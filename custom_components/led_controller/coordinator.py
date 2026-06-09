@@ -26,10 +26,13 @@ class LedControllerCoordinator(DataUpdateCoordinator[dict[int, LedState]]):
         entry: ConfigEntry,
         device: LedDevice,
         friendly_name: str,
+        reset_config: list[dict] | None = None,
     ) -> None:
         self.entry = entry
         self.device = device
         self.friendly_name = friendly_name
+        # Per-device preset applied by the led_controller.reset service.
+        self.reset_config: list[dict] = reset_config or []
         super().__init__(
             hass,
             _LOGGER,

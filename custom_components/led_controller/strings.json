@@ -30,9 +30,18 @@
       "init": {
         "title": "LED Controller options",
         "data": {
-          "friendly_name": "Friendly name"
+          "friendly_name": "Friendly name",
+          "z2m_name": "Zigbee2MQTT friendly name",
+          "z2m_base_topic": "Zigbee2MQTT base topic",
+          "reset_config": "Reset preset"
+        },
+        "data_description": {
+          "reset_config": "List of {led, color, brightness, mode} entries applied by the Reset service. LEDs not listed are turned off. Leave empty to clear all LEDs on reset."
         }
       }
+    },
+    "error": {
+      "invalid_reset_config": "Reset preset is invalid. Expected a list of {led, color, brightness, mode} entries."
     }
   },
   "selector": {
@@ -90,6 +99,10 @@
           "description": "List of {led, color, brightness, mode} entries."
         }
       }
+    },
+    "reset": {
+      "name": "Reset",
+      "description": "Restore targeted controllers to their saved per-device reset preset. LEDs not in the preset are turned off. With no target, every configured controller is reset to its own preset."
     }
   }
 }

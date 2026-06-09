@@ -80,3 +80,13 @@ set_scene:
       required: true
       selector:
         object:
+
+reset:
+  name: Reset
+  description: >-
+    Restore targeted controllers to their saved per-device reset preset (configured in
+    each device's options). LEDs not in the preset are turned off. With no target, every
+    configured controller is reset to its own preset.
+  target:
+    device:
+      integration: led_controller

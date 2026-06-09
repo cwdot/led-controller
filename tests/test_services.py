@@ -15,6 +15,7 @@ from custom_components.led_controller.const import DOMAIN
 from custom_components.led_controller.coordinator import LedControllerCoordinator
 from custom_components.led_controller.services import (
     SERVICE_CLEAR_LED,
+    SERVICE_RESET,
     SERVICE_SET_LED,
     async_register_services,
 )
@@ -144,3 +145,52 @@ async def test_clear_led(hass: HomeAssistant):
         blocking=True,
     )
     assert coord.device.clear_led.await_count == 1
+
+
+async def test_reset_applies_preset_and_clears_rest(hass: HomeAssistant):
+    coord = _fake_coordinator(hass, led_count=3)
+    coord.reset_config = [{"led": 1, "color": "red", "brightness": 100}]
+    hass.data[DOMAIN] = {"entry-1": coord}
+
+    async_register_services(hass)
+    await hass.services.async_call(DOMAIN, SERVICE_RESET, {"device_id": "dev-1"}, blocking=True)
+
+    # LED 1 set to its preset; LEDs 2-3 cleared.
+    assert coord.device.set_led.await_count == 1
+    assert coord.device.set_led.await_args.args[1] == 1
+    assert coord.device.clear_led.await_count == 2
+    cleared = {c.args[1] for c in coord.device.clear_led.await_args_list}
+    assert cleared == {2, 3}
+
+
+async def test_reset_empty_preset_clears_all(hass: HomeAssistant):
+    coord = _fake_coordinator(hass, led_count=4)
+    coord.reset_config = []
+    hass.data[DOMAIN] = {"entry-1": coord}
+
+    async_register_services(hass)
+    await hass.services.async_call(DOMAIN, SERVICE_RESET, {"device_id": "dev-1"}, blocking=True)
+
+    assert coord.device.set_led.await_count == 0
+    assert coord.device.clear_led.await_count == 4
+
+
+async def test_reset_no_target_resets_all(hass: HomeAssistant):
+    c1 = _fake_coordinator(hass, device_id="dev-1", led_count=2)
+    c1.reset_config = []
+    c2 = _fake_coordinator(hass, device_id="dev-2", led_count=2)
+    c2.reset_config = []
+    hass.data[DOMAIN] = {"e1": c1, "e2": c2}
+
+    async_register_services(hass)
+    await hass.services.async_call(DOMAIN, SERVICE_RESET, {}, blocking=True)
+
+    assert c1.device.clear_led.await_count == 2
+    assert c2.device.clear_led.await_count == 2
+
+
+async def test_reset_no_target_no_devices_errors(hass: HomeAssistant):
+    hass.data[DOMAIN] = {}
+    async_register_services(hass)
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(DOMAIN, SERVICE_RESET, {}, blocking=True)

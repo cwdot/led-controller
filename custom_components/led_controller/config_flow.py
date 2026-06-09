@@ -14,6 +14,7 @@ from .const import (
     CONF_DEVICE_ID,
     CONF_DEVICE_TYPE,
     CONF_FRIENDLY_NAME,
+    CONF_RESET_CONFIG,
     CONF_Z2M_BASE_TOPIC,
     CONF_Z2M_NAME,
     DEFAULT_Z2M_BASE_TOPIC,
@@ -22,6 +23,7 @@ from .const import (
     DEVICE_TYPES,
     DOMAIN,
 )
+from .services import RESET_CONFIG_SCHEMA
 
 
 class LedControllerConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -115,10 +117,20 @@ class LedControllerOptionsFlow(OptionsFlow):
         self._entry = entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> Any:
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
         data = {**self._entry.data, **self._entry.options}
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                user_input[CONF_RESET_CONFIG] = RESET_CONFIG_SCHEMA(
+                    user_input.get(CONF_RESET_CONFIG) or []
+                )
+            except vol.Invalid:
+                errors["base"] = "invalid_reset_config"
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
+            data = {**data, **user_input}
+
         schema_dict: dict[Any, Any] = {
             vol.Optional(
                 CONF_FRIENDLY_NAME,
@@ -135,7 +147,12 @@ class LedControllerOptionsFlow(OptionsFlow):
                     default=data.get(CONF_Z2M_BASE_TOPIC, DEFAULT_Z2M_BASE_TOPIC),
                 )
             ] = selector.TextSelector()
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(schema_dict))
+        schema_dict[vol.Optional(CONF_RESET_CONFIG, default=data.get(CONF_RESET_CONFIG, []))] = (
+            selector.ObjectSelector()
+        )
+        return self.async_show_form(
+            step_id="init", data_schema=vol.Schema(schema_dict), errors=errors
+        )
 
 
 def _integration_entry_ids(hass, integration: str) -> set[str]:

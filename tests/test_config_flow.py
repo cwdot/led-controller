@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -13,6 +14,7 @@ from custom_components.led_controller.const import (
     CONF_DEVICE_ID,
     CONF_DEVICE_TYPE,
     CONF_FRIENDLY_NAME,
+    CONF_RESET_CONFIG,
     CONF_Z2M_NAME,
     DEVICE_TYPE_VZM35,
     DEVICE_TYPE_ZEN32,
@@ -151,3 +153,51 @@ async def test_vzm35_requires_z2m_name(hass: HomeAssistant) -> None:
 
     assert result3["type"] == FlowResultType.CREATE_ENTRY
     assert result3["data"][CONF_Z2M_NAME] == "bedroom_fan"
+
+
+async def _setup_zen32_entry(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=f"{DEVICE_TYPE_ZEN32}:opt",
+        data={
+            CONF_DEVICE_TYPE: DEVICE_TYPE_ZEN32,
+            CONF_DEVICE_ID: "opt",
+            CONF_FRIENDLY_NAME: "Kitchen",
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    return entry
+
+
+async def test_options_flow_stores_valid_reset_preset(hass: HomeAssistant) -> None:
+    entry = await _setup_zen32_entry(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_FRIENDLY_NAME: "Kitchen", CONF_RESET_CONFIG: [{"led": 1, "color": "red"}]},
+    )
+    await hass.async_block_till_done()
+
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+    # Stored preset is schema-normalized (brightness default filled in).
+    assert entry.options[CONF_RESET_CONFIG] == [{"led": 1, "color": "red", "brightness": 100}]
+
+
+async def test_options_flow_rejects_invalid_reset_preset(hass: HomeAssistant) -> None:
+    entry = await _setup_zen32_entry(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        # Missing required "led" key.
+        {CONF_FRIENDLY_NAME: "Kitchen", CONF_RESET_CONFIG: [{"color": "red"}]},
+    )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "invalid_reset_config"}

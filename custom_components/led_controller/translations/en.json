@@ -38,12 +38,12 @@
           "reset_config": "Reset preset"
         },
         "data_description": {
-          "reset_config": "List of {led, color, brightness, mode} entries applied by the Reset service. LEDs not listed are turned off. Leave empty to clear all LEDs on reset."
+          "reset_config": "List of (led, color, brightness, mode) entries applied by the Reset service. LEDs not listed are turned off. Leave empty to clear all LEDs on reset."
         }
       }
     },
     "error": {
-      "invalid_reset_config": "Reset preset is invalid. Expected a list of {led, color, brightness, mode} entries."
+      "invalid_reset_config": "Reset preset is invalid. Expected a list of (led, color, brightness, mode) entries."
     }
   },
   "selector": {
@@ -98,7 +98,7 @@
       "fields": {
         "leds": {
           "name": "LEDs",
-          "description": "List of {led, color, brightness, mode} entries."
+          "description": "List of (led, color, brightness, mode) entries."
         }
       }
     },

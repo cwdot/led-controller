@@ -76,7 +76,7 @@ set_scene:
   fields:
     leds:
       name: LEDs
-      description: List of {led, color, brightness, mode} entries.
+      description: List of (led, color, brightness, mode) entries.
       required: true
       selector:
         object:
